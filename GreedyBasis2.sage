@@ -1,4 +1,4 @@
-class GreedyBasis(SageObject):
+class GreedyBasis2(SageObject):
     """
     This class computes the non-commutative greedy elements generalizing Lee-Li-Zelevinsky Dyck path model.
     
@@ -440,21 +440,21 @@ class GreedyBasis(SageObject):
         for h in H:
             vertex1 = Dyck_vertices[horiz_edges[h-1]-1]
             vertex2 = Dyck_vertices[horiz_edges[h-1]]
-            output += "  \\draw[color=black,line width=1.5pt] ("
+            output += "  \\draw[color=red,line width=1.5pt] ("
             output += str(float(vertex1[0]/4))+","+str(float(vertex1[1]/4))+") -- ("
             output += str(float(vertex2[0]/4))+","+str(float(vertex2[1]/4))+");\n"
         
         for v in V:
             vertex1 = Dyck_vertices[vert_edges[v-1]-1]
             vertex2 = Dyck_vertices[vert_edges[v-1]]
-            output += "  \\draw[color=black,line width=1.5pt] ("
+            output += "  \\draw[color=red,line width=1.5pt] ("
             output += str(float(vertex1[0]/4))+","+str(float(vertex1[1]/4))+") -- ("
             output += str(float(vertex2[0]/4))+","+str(float(vertex2[1]/4))+");\n"
         
         for v in self.compliment(range(1,a2+1),self.horiz_shadow(a1,a2,H)):
             vertex1 = Dyck_vertices[vert_edges[v-1]-1]
             vertex2 = Dyck_vertices[vert_edges[v-1]]
-            output += "  \\draw[color=lightgray,line width=1.5pt] ("
+            output += "  \\draw[color=green,line width=1.5pt] ("
             output += str(float(vertex1[0]/4))+","+str(float(vertex1[1]/4))+") -- ("
             output += str(float(vertex2[0]/4))+","+str(float(vertex2[1]/4))+");\n"
             
@@ -467,12 +467,13 @@ class GreedyBasis(SageObject):
         #creates tikz pictures of all compatible pairs on the maximal Dyck path in the rectangle (a1,a2)
         #gray edges may be freely included
 
-        working_dir="/Users/dylanrupel/Documents/Math/Research/Computations/CompatiblePairs/"
-        filename = "comp_pairs"+str(self._b)+str(self._c)+"-("+str(a1)+","+str(a2)+")"
-        if set_horiz_card != -1:
-            filename += "-|H|="+str(set_horiz_card)
-        if set_vert_card != -1:
-            filename += "-|V|="+str(set_vert_card)
+        working_dir="/tmp/"
+        #filename = "comp_pairs"+str(self._b)+str(self._c)+"-("+str(a1)+","+str(a2)+")"
+        #if set_horiz_card != -1:
+        #    filename += "-|H|="+str(set_horiz_card)
+        #if set_vert_card != -1:
+        #    filename += "-|V|="+str(set_vert_card)
+        filename = "sage_output"
         filename += ".tex"
         print filename
         TeXFile=open(working_dir+filename,'w')
@@ -485,7 +486,7 @@ class GreedyBasis(SageObject):
         TeXFile.write(" \\begin{tikzpicture}\n")
         TeXFile.write(self.draw_diagonal(a1,a2)+self.draw_Dyck_path_vertices(a1,a2))
         TeXFile.write(" \\end{tikzpicture}\\\\\n\n")
-        TeXFile.write("where a gray edge may be freely included or excluded.  ")
+        TeXFile.write("where a green edge may be freely included or excluded.  ")
         TeXFile.write("These compute the greedy element: $x["+str(a1)+","+str(a2)+"]=$\\\\\n\n")
         
         counter = 0
@@ -502,7 +503,7 @@ class GreedyBasis(SageObject):
         TeXFile.close()
         
         import subprocess
-        subprocess.call(['pdflatex', '-halt-on-error', filename], cwd=working_dir)
+        subprocess.call(['pdflatex', '-halt-on-error', filename], cwd=working_dir, stdout=subprocess.PIPE)
         
         
     #scattering methods
@@ -653,10 +654,10 @@ class GreedyBasis(SageObject):
             output += "  \\draw[color="+color+",line width=1pt] ("
             output += str(current_point[0])+","+str(current_point[1])+") -- ("
             output += str(final_point[0])+","+str(final_point[1])+");\n"
-            output += "  \\draw[color="+color+",fill="+color+"] ("+str(final_point[0])+","+str(final_point[1])+") circle (1.1pt);\n"
+            output += "  \\draw[color="+color+",fill="+color+"] ("+str(final_point[0])+","+str(final_point[1])+") circle (3pt);\n"
             current_point = final_point
         current_direction  = self.monomial_degree(line[0][1])
-        final_point = (current_point[0]+current_direction[0],current_point[1]+current_direction[1])
+        final_point = (current_point[0]+max(Q)*current_direction[0],current_point[1]+max(Q)*current_direction[1])
         output += "  \\draw[color="+color+",line width=1pt] ("
         output += str(current_point[0])+","+str(current_point[1])+") -- ("
         output += str(final_point[0])+","+str(final_point[1])+");\n"
@@ -680,8 +681,9 @@ class GreedyBasis(SageObject):
         
     def draw_broken_lines(self,a1,a2,Q):
         #creates tikz pictures of all broken lines with initial momentum x^{-a1}y^{-a2} ending at Q
-        working_dir="/Users/dylanrupel/Documents/Math/Research/Computations/BrokenLines/"
-        filename = "broken_lines"+str(self._b)+str(self._c)+"-("+str(a1)+","+str(a2)+")"#-("+str(Q[0])+","+str(Q[1])+")"
+        working_dir="/tmp/"
+        #filename = "broken_lines"+str(self._b)+str(self._c)+"-("+str(a1)+","+str(a2)+")"#-("+str(Q[0])+","+str(Q[1])+")"
+        filename = "sage_output"
         filename += ".tex"
         print filename
         
@@ -715,10 +717,12 @@ class GreedyBasis(SageObject):
         TeXFile.write("\\resizebox{4.5in}{4.5in}{\n")
         TeXFile.write(" \\begin{tikzpicture}\n")
         TeXFile.write(self.draw_walls(a1,a2,Q))
-        TeXFile.write("  \\draw[fill=black] ("+str(Q[0])+","+str(Q[1])+") circle (2pt);\n")
         
         for line in self.broken_lines(self._x^(-a1)*self._y^(-a2),Q):
             TeXFile.write(self.draw_broken_line(line,Q))
+
+
+        TeXFile.write("  \\draw[fill=black] ("+str(Q[0])+","+str(Q[1])+") circle (3pt);\n")
         
         TeXFile.write(" \\end{tikzpicture}}\\\\\n\n")
             
