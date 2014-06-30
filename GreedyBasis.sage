@@ -7,9 +7,9 @@ class GreedyBasis(SageObject):
         self._c = c
         
         var('x,y')
-        self._x = x
-        self._y = y
         self._scatter_ring=ZZ[x,y].fraction_field()
+        self._x = self._scatter_ring(x)
+        self._y = self._scatter_ring(y)
     
     def get_Dyck_path(self,end,start=(0,0)):
         """

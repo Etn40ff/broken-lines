@@ -1,0 +1,12 @@
+This is my current version of the code to compute broken lines and greedy
+elements. Right now it is in a disgusting shape as far as style is concerned and
+requires some major refactoring but at least it works.
+
+To use it import in your sage session
+sage: %attach GreedyBasis.sage
+
+There is a bug in the procedure to plot broken lines: the rays are not plotted
+as they should be. To reproduce this bug do
+sage: G=GreedyBasis(3,2)
+sage: G.draw_broken_lines(8,8,(10,3))
+you will see some scatterings happening not on the plotted ray
