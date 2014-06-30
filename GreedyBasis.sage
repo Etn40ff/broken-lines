@@ -11,45 +11,43 @@ class GreedyBasis(SageObject):
         self._x = self._scatter_ring(x)
         self._y = self._scatter_ring(y)
     
-    def get_Dyck_path(self,end,start=(0,0)):
+    def get_Dyck_path(self,end):
         """
             Maximal Dyck path from start to end
         """
         
-        a=(end[0]-start[0],end[1]-start[1])
-        if any( x < 0 for x in a):
+        if any( x < 0 for x in end):
             raise ValueError("end point must come after start point")
-        vertices=[start]
+        vertices=[(0,0)]
         horizontals=[]
         verticals=[]
 
-        if a[0] == 0:
-            for i in range(1,a[1]+1):
-                p = (start[0],start[1]+i)
+        if end[0] == 0:
+            for i in range(1,end[1]+1):
+                p = (0,i)
                 vertices.append(p)
-                verticals.append(i+start[0]+start[1])
+                verticals.append(i)
         
-        elif a[1] == 0:
-            for i in range(1,a[0]+1):
-                p = (start[0]+i,start[1])
+        elif end[1] == 0:
+            for i in range(1,end[0]+1):
+                p = (i,0)
                 vertices.append(p)
-                horizontals.append(i+start[0]+start[1])
+                horizontals.append(i)
 
         else:
-            slope = a[1]/a[0]
+            slope = end[1]/end[0]
             p = (1,0)
             vertices.append(p)
-            counter = start[0]+start[1]+1
-            horizontals.append(counter)
-            counter += 1
-            while p != a:
+            horizontals.append(1)
+            counter = 2
+            while p != end:
                 if (p[1]+1)/p[0] <= slope:
                     p=(p[0],p[1]+1)
                     verticals.append(counter)
                 else:
                     p=(Integer(p[0]+1),Integer(p[1]))
                     horizontals.append(counter)
-                vertices.append((p[0]+start[0],p[1]+start[1]))
+                vertices.append((p[0],p[1]))
                 counter += 1
         return (tuple(vertices),tuple(horizontals),tuple(verticals))
 
