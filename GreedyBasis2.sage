@@ -66,8 +66,8 @@ class GreedyBasis2(SageObject):
         horiz_edges = Dyck_path[1]
         vert_edges = Dyck_path[2]
 
-        x1 = G._torus._gens[0]
-        x2 = G._torus._gens[1]
+        x1 = self._torus._gens[0]
+        x2 = self._torus._gens[1]
         output = 0
         for horiz in self.power_set(range(1,a1+1)):
             for vert in self.power_set(range(1,a2+1)):
@@ -387,8 +387,8 @@ class GreedyBasis2(SageObject):
 
 
     def GreedyElementRecursive(self,a1,a2):
-        x1 = G._torus._gens[0]
-        x2 = G._torus._gens[1]
+        x1 = self._torus._gens[0]
+        x2 = self._torus._gens[1]
         if a1 < 0:
             if a2 < 0:
                 return x1^(-a1)*x2^(-a2)
