@@ -173,21 +173,6 @@ class GreedyBasis(SageObject):
             return True
         return False
 
-    def _appendable_edge(self, pair, dyck_path, t, edge):
-        if t == "v":
-            if pair[0] == []:
-                return True
-            else:
-                F = dyck_path[0][edge]
-                for i in pair[0]:
-                    E = dyck_path[0][i-1]
-
-
-        if t == "h" and pair[1] == []:
-            return True
-        
-        return False
-
     def draw_compatible_pairs(self, end, max_counter=1, working_dir="/tmp/", filename="sage_output"):
         filename += ".tex"
         TeXFile=open(working_dir+filename,'w')
