@@ -13,11 +13,11 @@ class GreedyBasis(SageObject):
     
     def get_Dyck_path(self,end):
         """
-            Maximal Dyck path from start to end
+            Maximal Dyck path from (0,0) to end
         """
         
         if any( x < 0 for x in end):
-            raise ValueError("end point must come after start point")
+            raise ValueError("end point must be in the first quadrant")
         vertices=[(0,0)]
         horizontals=[]
         verticals=[]
