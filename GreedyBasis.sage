@@ -429,3 +429,40 @@ class GreedyBasis(SageObject):
         
         import subprocess
         subprocess.call(['pdflatex', '-halt-on-error', filename], cwd=working_dir, stdout=subprocess.PIPE)
+
+    def _thetad(self, scatter_diagram, k):
+        X = self._x
+        for (slope,f) in scatter_diagram:
+            g = gcd(slope)
+            X = X(x=self._x*f^(-slope[1]/g),y=self._y*f^(slope[0]/g))
+            X = taylor(X,(self._x,0),(self._y,0),k-1)
+        return X
+
+    def _scatter(self, scatter_diagram, k):
+        P = self._thetad(scatter_diagram, k)
+        scatter_diagram = list(scatter_diagram)
+        for i in range(2,k-1):
+            g = gcd(i-1, k-i-1)
+            C = g*P.coefficient(self._x,i).coefficient(self._y,k-1-i)/(k-1-i)
+            for j in range(2,len(scatter_diagram)):
+                (slope,f) = scatter_diagram[j]
+                if C == 0:
+                    break
+                if slope[0] == (i-1)/g and slope[1] == (k-1-i)/g:
+                    new_ray = (slope, f+C*self._x^(i-1)*self._y^(k-1-i))
+                    C = 0
+                    scatter_diagram[j] = new_ray 
+                elif slope[0] == 0 or slope[1]/slope[0] >= (k-1-i)/(i-1):
+                    new_ray = (((i-1)/g,(k-1-i)/g),1+C*self._x^(i-1)*self._y^(k-1-i))
+                    scatter_diagram.insert(j, new_ray)
+                    C = 0
+                else:
+                    j += 1
+        return tuple(scatter_diagram)
+
+    def _get_scattering_diagram(self,fx, fy, ktop):
+        scattering_diagram = (((-1,0),fx),((0,-1),fy),((1,0),fx),((0,1),fy))
+        for k in range(2,ktop+1):
+           scattering_diagram = self._scatter(scattering_diagram,k)
+        return scattering_diagram
+
