@@ -140,7 +140,9 @@ class ScatteringRing(SageObject):
         
         clockwise_diagram = ScatteringDiagram([ W for W in diagram if _side(W.slope,degree) == "clockwise"  ])
         counterclockwise_diagram = ScatteringDiagram(reversed([ W for W in diagram if _side(W.slope,degree) == "counterclockwise"  ]))
-    
+        print clockwise_diagram.walls
+        print counterclockwise_diagram.walls
+
         clockwise_lines = [BrokenLine(init_momentum)]
         for wall in clockwise_diagram:
             temp_lines = []
@@ -231,8 +233,25 @@ class BrokenLine(SageObject):
     def monomial(self):
         return self.line_segments[-1].monomial
 
-    def tikz(self, end_point):
-        pass
+    def tikz(self, end_point, radius):
+        output = ""
+        current_point = end_point
+        for segment in reversed(self.line_segments):
+            current_direction  = _monomial_degree(segment.monomial)
+            intersection_slope = segment.scattering_wall
+            if intersection_slope != None:
+                var('s','t')
+                solution_dict = solve([current_direction[1]*(s-current_point[0])==current_direction[0]*(t-current_point[1]),intersection_slope[1]*s==intersection_slope[0]*t],(s,t),solution_dict=True)[0]
+                final_point = (solution_dict[s],solution_dict[t])
+            else:
+                final_point = (current_point[0]+radius*current_direction[0],current_point[1]+radius*current_direction[1])
+            output += "  \\draw[color=red,line width=1pt] ("
+            output += str(current_point[0])+","+str(current_point[1])+") -- ("
+            output += str(final_point[0])+","+str(final_point[1])+");\n"
+            current_point = final_point
+            if intersection_slope != None:
+                output += "  \\draw[color=red,fill=red] ("+str(final_point[0])+","+str(final_point[1])+") circle (3pt);\n"
+        return output
 
 
 class BrokenLineSegment(SageObject):
@@ -269,9 +288,9 @@ def _side(to_check, reference):
         return "clockwise"
     if  to_check == (0,-1) or to_check == (1,0):
         return "counterclockwise"
-    if reference[0]*to_check[1] > reference[1]*to_check[0]:
-        return "clockwise"
     if reference[0]*to_check[1] < reference[1]*to_check[0]:
+        return "clockwise"
+    if reference[0]*to_check[1] > reference[1]*to_check[0]:
         return "counterclockwise"
     return "colinear"
 
