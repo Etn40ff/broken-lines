@@ -113,14 +113,22 @@ class ScatteringRing(SageObject):
                 raise ValueError("You should specify the end point")
 
         degree = _monomial_degree(init_momentum)
-        if any( x > 0 for x in degree ):
+        if all( x >= 0 for x in degree ):
             return BrokenLines(init_momentum, end_point, (BrokenLine(init_momentum),))
-
-        total_degree = -sum(degree)
-        diagram = self.scattering_diagram(total_degree)
+        elif degree[0] > 0:
+            total_degree = degree[0]-degree[1]
+            clockwise_diagram = ScatteringDiagram([ScatteringWall((-1,0),1+self.x**self._b)])
+            counterclockwise_diagram = ScatteringDiagram([])
+        elif degree[1] > 0:
+            total_degree = -degree[0]+degree[1]
+            clockwise_diagram = ScatteringDiagram([])
+            counterclockwise_diagram = ScatteringDiagram([ScatteringWall((0,-1),1+self.x**self._c)])
+        else:
+            total_degree = -sum(degree)
+            diagram = self.scattering_diagram(total_degree)
         
-        clockwise_diagram = ScatteringDiagram([ W for W in diagram if _side(W.slope,degree) == "clockwise"  ])
-        counterclockwise_diagram = ScatteringDiagram(reversed([ W for W in diagram if _side(W.slope,degree) == "counterclockwise"  ]))
+            clockwise_diagram = ScatteringDiagram([ W for W in diagram if _side(W.slope,degree) == "clockwise"  ])
+            counterclockwise_diagram = ScatteringDiagram(reversed([ W for W in diagram if _side(W.slope,degree) == "counterclockwise"  ]))
 
         clockwise_lines = [BrokenLine(init_momentum)]
         for wall in clockwise_diagram:
