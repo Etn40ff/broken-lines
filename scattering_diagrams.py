@@ -1,85 +1,50 @@
 from sage.misc.cachefunc import cached_method                                                                                                                             
 
-class ScatteringWall(SageObject):
-    """r
-        A class to encode a wall in a scattering diagram
-    """
-    def __init__(self, slope, f):
-        self.slope = tuple(slope)
-        self.function = f
-    
-    def __hash__(self):
-        return hash((self.slope, self.function))
-    
-    def __repr__(self):
-        return "A wall of slope " + str(self.slope) + " with scattering function " + str(self.function)
-
-    def _latex_(self):
-        pass
-
-    def tikz(self, radius=10,show_label=False):
-        output = "\\draw[color=black,line width=1pt] (0,0) -- "
-        endpoint = -N(radius * vector(self.slope)/norm(vector(self.slope)))
-        output += str(endpoint) + ";\n"
-        # Do something here to show funtions
-        return output
-
-class ScatteringDiagram(SageObject):
-    """r
-        A class to hold the scattering diagram (usually up to a certain depth)
-    """
-    def __init__(self, walls):
-        self.walls = tuple(walls)
-
-    def __hash__(self):
-        return hash(self.walls)
-    
-    def __repr__(self):
-        return "A scattering diagram with " + str(len(self.walls)) + " walls in it."
-
-    def __getitem__(self, idx):
-        return self.walls[idx]
-
-    def __setitem__(self, idx, wall):
-        new_diagram = list(self.walls)
-        new_diagram[idx] = wall
-        self.walls = tuple(new_diagram)
-
-    def __len__(self):
-        return len(self.walls)
-
-    def _latex_(self):
-        pass
-
-    def insert(self, position, wall):
-        new_diagram = list(self.walls)
-        new_diagram.insert(position, wall)
-        self.walls = tuple(new_diagram)
-
-    def append(self, wall):
-        new_diagram = list(self.walls)
-        new_diagram.append(wall)
-        self.walls = tuple(new_diagram)
-
-    def tikz(self, radius=10,show_label=False):
-        output = ""
-        for W in self.walls:
-            output += W.tikz(radius=radius, show_label=show_label)
-        return output
-
 class ScatteringRing(SageObject):
-    """r
-        A rank-2 scattering ring
     """
-    def __init__(self, b, c):
+        A rank-2 scattering ring
+        
+        b: exponent of x
+        c: exponent of y
+        end_point: a point in the first quadrant
+
+        EXAMPLES:
+
+        sage: R=ScatteringRing(2,2); R
+        The rank-2 scattering ring associated to the integers (2, 2).
+        sage: R=ScatteringRing(2,2,end_point=(10,3));
+        The rank-2 scattering ring associated to the integers (2, 2), with end
+        point (10, 3).
+    """
+    def __init__(self, b, c, end_point=None):
         self._b = b
         self._c = c
         self.scatter_ring = LaurentPolynomialRing(QQ, 'x,y')
         self.scatter_field = self.scatter_ring.fraction_field()
         (self.x, self.y) = self.scatter_ring.gens()
-    
+        self._end_point=end_point
+   
+    def __repr__(self):
+        output = "The rank-2 scattering ring associated to the integers " 
+        output += str((self._b,self._c))
+        if self._end_point is not None:
+            output += ", with end point "
+            output += str(self._end_point)
+        output +="."
+        return output
+
     @cached_method
     def scattering_diagram(self, max_degree):
+        """
+            Return all the walls of the scattering diagram associated to self
+            with monomials of totat degree at most max_degree
+
+            EXAMPLES:
+
+            sage: R.scattering_diagram(16)
+            A scattering diagram with 11 walls in it.
+        """
+
         # this map should be made recursive
         W = ScatteringWall
         x = self.x
@@ -128,20 +93,34 @@ class ScatteringRing(SageObject):
                     else:
                         j += 1
         return diagram
-
+    
     @cached_method
-    def broken_lines(self, init_momentum, end_point):
+    def broken_lines(self, init_momentum, end_point=None):
+        """
+        Return all the broken lines with initial momentum init_momentum and end
+        point end_point.
+
+        EXAMPLES:
+
+        sage: R.broken_lines(R.x^-1*R.y^-1,(10,3))
+        A collection of 3 broken lines with initial momentum x^-1*y^-1 and end
+        point (10, 3).
+        """
+        if end_point is None:
+            if self._end_point is not None:
+                end_point = self._end_point
+            else: 
+                raise ValueError("You should specify the end point")
+
         degree = _monomial_degree(init_momentum)
         if any( x > 0 for x in degree ):
-            return (BrokenLine(init_momentum),)
+            return BrokenLines(init_momentum, end_point, (BrokenLine(init_momentum),))
 
         total_degree = -sum(degree)
         diagram = self.scattering_diagram(total_degree)
         
         clockwise_diagram = ScatteringDiagram([ W for W in diagram if _side(W.slope,degree) == "clockwise"  ])
         counterclockwise_diagram = ScatteringDiagram(reversed([ W for W in diagram if _side(W.slope,degree) == "counterclockwise"  ]))
-        print clockwise_diagram.walls
-        print counterclockwise_diagram.walls
 
         clockwise_lines = [BrokenLine(init_momentum)]
         for wall in clockwise_diagram:
@@ -169,21 +148,21 @@ class ScatteringRing(SageObject):
                         temp_lines.append(new_line)
             counterclockwise_lines = temp_lines
         
-        broken_lines = []
+        broken_lines = BrokenLines(init_momentum, end_point)
         for line in clockwise_lines:
             final_direction = _monomial_degree(line.monomial())
             if final_direction[0] > 0:
-                broken_lines.append(line)
+                broken_lines.add_line(line)
             elif end_point[0]*final_direction[1]-end_point[1]*final_direction[0] < 0:
-                broken_lines.append(line)
+                broken_lines.add_line(line)
         for line in counterclockwise_lines:
             final_direction = _monomial_degree(line.monomial())
             if final_direction[1] > 0:
-                broken_lines.append(line)
+                broken_lines.add_line(line)
             elif end_point[0]*final_direction[1]-end_point[1]*final_direction[0] > 0:
-                broken_lines.append(line)
+                broken_lines.add_line(line)
         
-        return tuple(broken_lines)
+        return broken_lines
     
     def _scatter_at_wall(self, momentum, wall):
         momentum_exp = _monomial_degree(momentum)
@@ -194,6 +173,191 @@ class ScatteringRing(SageObject):
         for mon in scattered_monomials:
             scattered_segments.append(BrokenLineSegment(scattered_function.monomial_coefficient(mon), mon, wall.slope))
         return tuple(scattered_segments)
+
+    def show_broken_lines(self, initial_momentum, end_point=None, bounding_box=((-30,-30),(30,30))):
+        if end_point is None:
+            if self._end_point is not None:
+                end_point = self._end_point
+            else: 
+                raise ValueError("You should specify the end point")
+
+        tikz_commands = "\clip " +str(bounding_box[0]) +" rectangle " +str(bounding_box[1]) +";\n"
+        tikz_commands += self.scattering_diagram(-sum(_monomial_degree(initial_momentum))).tikz(bounding_box=bounding_box)
+        tikz_commands += self.broken_lines(initial_momentum, end_point).tikz(bounding_box=bounding_box)
+        _show(tikz_commands)
+
+    def save_broken_lines(self, initial_momentum, end_point=None, filename=None, bounding_box=((-30,-30),(30,30))):
+        if end_point is None:
+            if self._end_point is not None:
+                end_point = self._end_point
+            else: 
+                raise ValueError("You should specify the end point")
+
+        if filename is None:
+            raise ValueError("A filename should be provided")
+        tikz_commands = "\clip " +str(bounding_box[0]) +" rectangle " +str(bounding_box[1]) +";\n"
+        tikz_commands += self.scattering_diagram(-sum(_monomial_degree(initial_momentum))).tikz(bounding_box=bounding_box)
+        tikz_commands += self.broken_lines(initial_momentum, end_point).tikz(bounding_box=bounding_box)
+        _save(tikz_commands, filename=filename)
+
+    def greedy_element(self, initial_momentun, end_point=None):
+        """
+            Returns the greedy element computed with broken lines
+
+            initial_momentum: a monomial whose degree is the $d$-vector of the
+                greedy element
+
+            end_point: any point in the first quadrant
+
+            EXAMPLES:
+
+            sage: R.greedy_element(R.x^-1*R.y^-1,(10,3))
+            x*y^-1 + x^-1*y + x^-1*y^-1
+
+        """
+        if end_point is None:
+            if self._end_point is not None:
+                end_point = self._end_point
+            else: 
+                raise ValueError("You should specify the end point")
+
+        output = 0
+        for line in self.broken_lines(initial_momentun, end_point):
+            output += line.coefficient()*line.monomial()
+        return output
+
+class ScatteringWall(SageObject):
+    """r
+        A class to encode a wall in a scattering diagram
+    """
+    def __init__(self, slope, f):
+        self.slope = tuple(slope)
+        self.function = f
+    
+    def __hash__(self):
+        return hash((self.slope, self.function))
+    
+    def __repr__(self):
+        return "A wall of slope " + str(self.slope) + " with scattering function " + str(self.function)
+
+    def _latex_(self):
+        pass
+
+    def tikz(self, picture_radius=10, show_label=False):
+        output = "\\draw[color=black,line width=1pt] (0,0) -- "
+        endpoint = -N(picture_radius * vector(self.slope)/norm(vector(self.slope)))
+        output += str(endpoint) + ";\n"
+        # Do something here to show funtions
+        return output
+
+class ScatteringDiagram(SageObject):
+    """r
+        A class to hold the scattering diagram (usually up to a certain depth)
+    """
+    def __init__(self, walls):
+        self.walls = tuple(walls)
+
+    def __hash__(self):
+        return hash(self.walls)
+    
+    def __repr__(self):
+        return "A scattering diagram with " + str(len(self.walls)) + " walls in it."
+
+    def __getitem__(self, idx):
+        return self.walls[idx]
+
+    def __setitem__(self, idx, wall):
+        new_diagram = list(self.walls)
+        new_diagram[idx] = wall
+        self.walls = tuple(new_diagram)
+
+    def __len__(self):
+        return len(self.walls)
+
+    def __iter__(self):
+        return iter(self.walls)
+    
+    def _latex_(self):
+        pass
+
+    def insert(self, position, wall):
+        new_diagram = list(self.walls)
+        new_diagram.insert(position, wall)
+        self.walls = tuple(new_diagram)
+
+    def append(self, wall):
+        new_diagram = list(self.walls)
+        new_diagram.append(wall)
+        self.walls = tuple(new_diagram)
+
+    def tikz(self, show_label=False, bounding_box=((-30,-30),(30,30))):
+        picture_radius = max( [bounding_box[1][0]-bounding_box[0][0],bounding_box[1][1]-bounding_box[0][1]] )
+        output = ""
+        for W in self.walls:
+            output += W.tikz(picture_radius=picture_radius, show_label=show_label)
+        return output
+    
+    def show(self, bounding_box=((-30,-30),(30,30))):
+        tikz_commands = "\clip " +str(bounding_box[0]) +" rectangle " +str(bounding_box[1]) +";\n"
+        tikz_commands += self.tikz(bounding_box=bounding_box)
+        _show(tikz_commands)
+
+    def save(self, filename=None, bounding_box=((-30,-30),(30,30))):
+        if filename is None:
+            raise ValueError("A filename should be provided")
+        tikz_commands = "\clip " +str(bounding_box[0]) +" rectangle " +str(bounding_box[1]) +";\n"
+        tikz_commands += self.tikz(bounding_box=bounding_box)
+        _save(tikz_commands, filename=filename)
+
+class BrokenLines(SageObject):
+    """r
+        A collection of broken lines through a point
+    """
+
+    def __init__(self, initial_momentum, end_point, broken_lines=()):
+        self.initial_momentum = initial_momentum
+        self.end_point = end_point
+        self.broken_lines = broken_lines
+
+    def __iter__(self):
+        return iter(self.broken_lines)
+    
+    def __repr__(self):
+        output = "A collection of "
+        output += str(len(self.broken_lines))
+        output += " broken line" 
+        if len(self.broken_lines)>1:
+            output +="s"
+        output += " with initial momentum "
+        output += str(self.initial_momentum)
+        output += " and end point "
+        output += str(self.end_point)
+        output += "."
+        return output
+
+    def add_line(self, broken_line):
+        self.broken_lines += (broken_line,)
+
+    def tikz(self, bounding_box=((-30,-30),(30,30))):
+        picture_radius = max( [bounding_box[1][0]-bounding_box[0][0],bounding_box[1][1]-bounding_box[0][1]] )
+        output = ""
+        for bl in self.broken_lines:
+            output += bl.tikz(self.end_point, picture_radius)
+        output += "\\draw[color=black,fill=black] ("+str(self.end_point[0])+","+str(self.end_point[1])+") circle (3pt);\n"
+        return output
+
+    def show(self, bounding_box=((-30,-30),(30,30))):
+        tikz_commands = "\clip " +str(bounding_box[0]) +" rectangle " +str(bounding_box[1]) +";\n"
+        tikz_commands += self.tikz(bounding_box=bounding_box)
+        _show(tikz_commands)
+
+    def save(self, filename=None, bounding_box=((-30,-30),(30,30))):
+        if filename is None:
+            raise ValueError("A filename should be provided")
+        tikz_commands = "\clip " +str(bounding_box[0]) +" rectangle " +str(bounding_box[1]) +";\n"
+        tikz_commands += self.tikz(bounding_box=bounding_box)
+        _save(tikz_commands, filename=filename)
+
 
 class BrokenLine(SageObject):
     """r
@@ -224,6 +388,9 @@ class BrokenLine(SageObject):
         output +="."
         return output
 
+    def __iter__(self):
+        return iter(self.line_segments)
+    
     def append_segment(self, segment):
         self.line_segments += (segment,)
 
@@ -233,7 +400,7 @@ class BrokenLine(SageObject):
     def monomial(self):
         return self.line_segments[-1].monomial
 
-    def tikz(self, end_point, radius):
+    def tikz(self, end_point, picture_radius):
         output = ""
         current_point = end_point
         for segment in reversed(self.line_segments):
@@ -244,13 +411,13 @@ class BrokenLine(SageObject):
                 solution_dict = solve([current_direction[1]*(s-current_point[0])==current_direction[0]*(t-current_point[1]),intersection_slope[1]*s==intersection_slope[0]*t],(s,t),solution_dict=True)[0]
                 final_point = (solution_dict[s],solution_dict[t])
             else:
-                final_point = (current_point[0]+radius*current_direction[0],current_point[1]+radius*current_direction[1])
-            output += "  \\draw[color=red,line width=1pt] ("
+                final_point = (RR(current_point[0]+sqrt(picture_radius)*current_direction[0]),RR(current_point[1]+sqrt(picture_radius)*current_direction[1]))
+            output += "\\draw[color=red,line width=1pt] ("
             output += str(current_point[0])+","+str(current_point[1])+") -- ("
             output += str(final_point[0])+","+str(final_point[1])+");\n"
             current_point = final_point
             if intersection_slope != None:
-                output += "  \\draw[color=red,fill=red] ("+str(final_point[0])+","+str(final_point[1])+") circle (3pt);\n"
+                output += "\\draw[color=red,fill=red] ("+str(final_point[0])+","+str(final_point[1])+") circle (3pt);\n"
         return output
 
 
@@ -275,6 +442,7 @@ class BrokenLineSegment(SageObject):
         output += "."
         return output
 
+
 ###
 # helper functions
 ##
@@ -294,170 +462,27 @@ def _side(to_check, reference):
         return "counterclockwise"
     return "colinear"
 
-#################################
-# Old stuff
-################################
+def _show(tikz_commands):
+    from sage.misc.temporary_file import tmp_filename
+    filename = tmp_filename(ext=".pdf")
+    _save(tikz_commands, filename)
+    os.system('%s %s 2>/dev/null 1>/dev/null &' % (sage.misc.viewer.pdf_viewer(), filename))
 
-
-#    #scattering methods
-#        
-#        
-#
-#    def find_walls(self,init_momentum):
-#        counterclockwise_root_walls = [(0,1)]
-#        clockwise_root_walls = [(1,0)]
-#        counterclockwise_split_root_walls = []
-#        clockwise_split_root_walls = []
-#        
-#        momentum_exp = vector(init_momentum.numerator().exponents()[0])-vector(init_momentum.denominator().exponents()[0])
-#        check1 = true
-#        n=0
-#        while check1:
-#            root = (sqrt((sqrt(self._c/self._b)**(n%2)*chebyshev_U(n,sqrt(self._b*self._c)/2))**2),sqrt((sqrt(self._b/self._c)**((n-1)%2)*chebyshev_U(n-1,sqrt(self._b*self._c)/2))**2))
-#            check1 = false
-#            if momentum_exp[0]*root[1]-momentum_exp[1]*root[0]>0:
-#                if momentum_exp[0]+self._b*root[0]<0:
-#                    counterclockwise_root_walls = [root]+counterclockwise_root_walls
-#                    check1 = true
-#            elif momentum_exp[0]*root[1]-momentum_exp[1]*root[0]<0:
-#                if momentum_exp[1]+self._c*root[1]<0:
-#                    counterclockwise_split_root_walls.append(root)
-#                    check1 = true
-#            n += 1
-#        check2 = true
-#        n=0
-#        while check2:
-#            root = (sqrt((sqrt(self._c/self._b)**((n-1)%2)*chebyshev_U(n-1,sqrt(self._b*self._c)/2))**2),sqrt((sqrt(self._b/self._c)**(n%2)*chebyshev_U(n,sqrt(self._b*self._c)/2))**2))
-#            check2 = false
-#            if momentum_exp[0]*root[1]-momentum_exp[1]*root[0]<0:
-#                if momentum_exp[1]+self._c*root[1]<0:
-#                    clockwise_root_walls = [root]+clockwise_root_walls
-#                    check2 = true
-#            elif momentum_exp[0]*root[1]-momentum_exp[1]*root[0]>0:
-#                if momentum_exp[0]+self._b*root[0]<0:
-#                    clockwise_split_root_walls.append(root)
-#                    check2 = true
-#            n += 1
-#
-#        ###########
-#        # Imaginary walls needed
-#        ###########
-#        left_imaginary_walls = []
-#        right_imaginary_walls = []
-#        counterclockwise_walls = clockwise_split_root_walls+left_imaginary_walls+counterclockwise_root_walls
-#        clockwise_walls = counterclockwise_split_root_walls+right_imaginary_walls+clockwise_root_walls
-#
-#        #print "clockwise=",clockwise_walls
-#        #print "counterclockwise_walls=",counterclockwise_walls
-#
-#        return [clockwise_walls,counterclockwise_walls]
-#        
-#        
-#
-#
-#    def GreedyElementBrokenLine(self,a1,a2,Q):
-#        """
-#        Output:
-#            -Returns the greedy basis element
-#        """
-#
-#        output = 0
-#        for line in self.broken_lines(self._x**(-a1)*self._y**(-a2),Q):
-#            coeff = prod([i[0] for i in line])
-#            output += coeff*line[-1][1]
-#        return output 
-#        
-#    
-#    def draw_broken_line(self,line,Q,rgb=(1,0,0)):
-#        color = "{rgb:red,"+str(rgb[0])+";green,"+str(rgb[1])+";blue,"+str(rgb[2])+"}"
-#        output = ""
-#        current_point = Q
-#        for i in range(1,line.__len__()):
-#            current_direction  = self.monomial_degree(line[-i][1])
-#            intersection_slope = line[-i][2]
-#            #print "line=",line[-i]
-#            #print "direction=",current_direction
-#            #print "intersection=",intersection_slope
-#            var('s','t')
-#            solution_dict = solve([current_direction[1]*(s-current_point[0])==current_direction[0]*(t-current_point[1]),intersection_slope[1]*s==intersection_slope[0]*t],(s,t),solution_dict=True)[0]
-#            final_point = (solution_dict[s],solution_dict[t])
-#            output += "  \\draw[color="+color+",line width=1pt] ("
-#            output += str(current_point[0])+","+str(current_point[1])+") -- ("
-#            output += str(final_point[0])+","+str(final_point[1])+");\n"
-#            output += "  \\draw[color="+color+",fill="+color+"] ("+str(final_point[0])+","+str(final_point[1])+") circle (3pt);\n"
-#            current_point = final_point
-#        current_direction  = self.monomial_degree(line[0][1])
-#        final_point = (current_point[0]+max(Q)*current_direction[0],current_point[1]+max(Q)*current_direction[1])
-#        output += "  \\draw[color="+color+",line width=1pt] ("
-#        output += str(current_point[0])+","+str(current_point[1])+") -- ("
-#        output += str(final_point[0])+","+str(final_point[1])+");\n"
-#        return output
-#
-#
-#    def draw_walls(self,a1,a2,Q):
-#        output = ""
-#        walls = self.find_walls(self._x**(-a1)*self._y**(-a2))
-#        length = ceil(sqrt(Q[0]**2+Q[1]**2))
-#        for w in walls[0][:-1]+walls[1][:-1]:
-#            wall_length = ceil(sqrt(w[0]**2+w[1]**2))
-#            output += "  \\draw[color=black,line width=1pt] (0,0) -- ("
-#            output += str(-ceil(self._b*length*w[0]/wall_length))+","+str(-ceil(self._c*length*w[1]/wall_length))+");\n"
-#        for w in [(0,1),(1,0)]:
-#            output += "  \\draw[color=black,line width=1pt] (0,0) -- ("
-#            output += str(self._b*length*w[0])+","+str(self._c*length*w[1])+");\n"
-#        #print output
-#        return output
-#        
-#        
-#    def draw_broken_lines(self,a1,a2,Q):
-#        #creates tikz pictures of all broken lines with initial momentum x**{-a1}y**{-a2} ending at Q
-#        working_dir="/tmp/"
-#        #filename = "broken_lines"+str(self._b)+str(self._c)+"-("+str(a1)+","+str(a2)+")"#-("+str(Q[0])+","+str(Q[1])+")"
-#        filename = "sage_output"
-#        filename += ".tex"
-#        print filename
-#        
-#        TeXFile=open(working_dir+filename,'w')
-#        TeXFile.write("\\documentclass{article}\n")
-#        TeXFile.write("\\usepackage{amsmath, amssymb, latexsym, tikz}\n")
-#        TeXFile.write("\\usepackage{pgflibraryarrows,pgflibrarysnakes}\n\n")
-#        TeXFile.write("\\begin{document}\n\n")
-#        TeXFile.write("Let $b="+str(self._b)+"$ and $c="+str(self._c)+"$.  ")
-#        TeXFile.write("We consider broken lines with initial momentum $")
-#        if a1 != 0:
-#            TeXFile.write("x")
-#            if a1 != -1:
-#                TeXFile.write("**{")
-#                if a1 > 0:
-#                    TeXFile.write("-")
-#                    TeXFile.write(str(a1)+"}")
-#                else:
-#                    TeXFile.write(str(-a1)+"}")
-#        if a2 != 0:
-#            TeXFile.write("y")
-#            if a2 != -1:
-#                TeXFile.write("**{")
-#                if a2 > 0:
-#                    TeXFile.write("-")
-#                    TeXFile.write(str(a2)+"}")
-#                else:
-#                    TeXFile.write(str(-a2)+"}")
-#        
-#        TeXFile.write("$ which end at $Q=("+str(Q[0])+","+str(Q[1])+")$.  These are given by:\\\\\n\n")
-#        TeXFile.write("\\resizebox{4.5in}{4.5in}{\n")
-#        TeXFile.write(" \\begin{tikzpicture}\n")
-#        TeXFile.write(self.draw_walls(a1,a2,Q))
-#        
-#        for line in self.broken_lines(self._x**(-a1)*self._y**(-a2),Q):
-#            TeXFile.write(self.draw_broken_line(line,Q))
-#
-#
-#        TeXFile.write("  \\draw[fill=black] ("+str(Q[0])+","+str(Q[1])+") circle (3pt);\n")
-#        
-#        TeXFile.write(" \\end{tikzpicture}}\\\\\n\n")
-#            
-#        TeXFile.write("\\end{document}")
-#        TeXFile.close()
-#        
-#        import subprocess
-#        subprocess.call(['pdflatex', '-halt-on-error', filename], cwd=working_dir, stdout=subprocess.PIPE)
+def _save(tikz_commands, filename=None):
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in ['.pdf', '.tex']:
+        raise ValueError("The extension must be either pdf o tex")
+    (cwd, cfn) = os.path.split(filename)
+    basename = cfn.rsplit(".")[0]
+    TeXFile=open(cwd+"/"+basename+".tex",'w')
+    TeXFile.write("\\documentclass[tikz,border=10pt]{standalone}\n")
+    TeXFile.write("\\begin{document}\n\n")
+    TeXFile.write("\\begin{tikzpicture}\n")
+    TeXFile.write(tikz_commands)
+    TeXFile.write("\\end{tikzpicture}\n\n")
+    TeXFile.write("\\end{document}")
+    TeXFile.close()
+    if ext == ".pdf":
+        import subprocess
+        if subprocess.call(['pdflatex', '-halt-on-error', basename+".tex"], cwd=cwd, stdout=subprocess.PIPE) != 0:
+            raise RuntimeError("Unable to compile " +str(basename) +".tex. Try to run\n $cd " +str(cwd) +"; pdflatex " +str(basename) +".tex")
