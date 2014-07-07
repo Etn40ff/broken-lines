@@ -329,7 +329,10 @@ class BrokenLines(SageObject):
 
     def __iter__(self):
         return iter(self.broken_lines)
-    
+   
+    def __getitem__(self, idx):
+        return self.broken_lines[idx]
+
     def __repr__(self):
         output = "A collection of "
         output += str(len(self.broken_lines))
@@ -399,6 +402,9 @@ class BrokenLine(SageObject):
     def __iter__(self):
         return iter(self.line_segments)
     
+    def __getitem__(self, idx):
+        return self.line_segments[idx]
+
     def append_segment(self, segment):
         self.line_segments += (segment,)
 
