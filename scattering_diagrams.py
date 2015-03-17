@@ -65,7 +65,8 @@ class ScatteringRing(SageObject):
             new_x = self.scatter_field(self.x*f**(-slope[1]/g))
             new_y = self.scatter_field(self.y*f**(slope[0]/g))
             X = X(x=new_x,y=new_y)
-            X = taylor(X,(self.x,0),(self.y,0),k-1)
+            var('x,y')
+            X = taylor(X,(x,0),(y,0),k-1)
         return self.scatter_ring(X)
 
     def _add_walls(self, diagram, k):
