@@ -3,6 +3,12 @@ elements. Right now it is in a disgusting shape as far as style is concerned and
 requires some major refactoring but at least it works.
 
 To use it import in your sage session
+sage: %attach scattering_diagrams.py
+
+Disregard any other file: they are old experiments
+
+--- OBSOLETE STUFF BEYOND THIS POINT
+To use it import in your sage session
 sage: %attach GreedyBasis.sage
 
 There is a bug in the procedure to plot broken lines: the rays are not plotted
